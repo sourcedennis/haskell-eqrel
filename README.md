@@ -8,6 +8,7 @@ Three structures are provided:
 * `Data.IntEqRel` - Stores an equivalence relation for elements represented by an `Int`
 
 This implementation is inspired by the paper:
+
 Robert E. Tarjan. (1975). Efficiency of a Good But Not Linear Set Union Algorithm. _JACM 22(2)_
 
 However, it does _not_ have the amortized _O(1)_ time complexity from the paper. Instead, the time complexity is typically amortized _O(log n)_, which is dominated by Set-operations.
