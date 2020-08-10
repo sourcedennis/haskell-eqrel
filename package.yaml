@@ -1,0 +1,44 @@
+name:                eqrel
+version:             0.0.1
+github:              "sourcedennis/haskell-eqrel"
+license:             BSD3
+author:              "Dennis Sprokholt"
+maintainer:          "me@dennis.life"
+copyright:           "2020 Dennis Sprokholt"
+
+extra-source-files:
+- README.md
+- LICENSE
+
+description:         Please see the README on GitHub at <https://github.com/sourcedennis/haskell-eqrel#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+  dependencies:
+  - containers >= 0.6 && < 0.7
+  - unordered-containers >= 0.2.10 && < 0.2.11
+  - hashable >= 1.3 && < 1.4
+  exposed-modules:
+  - Data.EqRel
+  - Data.HashEqRel
+  - Data.IntEqRel
+
+tests:
+  id-containers-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - eqrel
+    - containers >= 0.6 && < 0.7
+    - unordered-containers >= 0.2.10 && < 0.2.11
+    - hashable >= 1.3 && < 1.4
+    - tasty >= 1.2.2 && < 1.4
+    - tasty-hunit >= 0.10 && < 0.11
+    - tasty-quickcheck >= 0.10 && < 0.11
