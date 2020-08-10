@@ -35,6 +35,8 @@ module Data.IntEqRel
   , equivalenceClasses
     -- * Combine
   , combine
+    -- * Conversion
+  , fromList
   ) where
 
 -- Stdlib imports
@@ -193,6 +195,23 @@ combine a b =
   -- Loop over all equivalence classes in 'b' and insert them into 'a'
   foldr (equateAll . IntSet.toList) a (fst $ equivalenceClasses b)
 
+
+-- # Conversion #
+
+-- | /O(n log n)/. Constructs a equivalence relation from the given list of
+-- equivalence classes.
+--
+-- Example:
+--
+-- > let rel = fromList [[1,2],[4,5,6],[7]]
+-- > fst (areEquivalent 4 6 rel) = True
+-- > fst (areEquivalent 6 7 rel) = False
+fromList :: [[Int]] -> IntEqRel
+fromList = foldr equateAll empty
+
+
+-- # Helpers (Internal) #
+
 -- | Private. /O(log n)/. Returns the representative of the equivalence class
 -- that the provided element is a member of. If the element is not part of any
 -- defined equivalence classes, 'Nothing' is returned as the first element.
@@ -219,9 +238,6 @@ representative a r@(IntEqRel m) =
         -- A link node points nowhere. Tree construction ensures this does not
         -- happen.
         (Nothing, _)  -> error "Invalid Tree"
-
-
--- # Helpers (Internal) #
 
 -- | Applies the function to the first element of the tuple.
 mapFst :: ( a -> c ) -> ( a, b ) -> ( c, b )

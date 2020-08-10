@@ -13,7 +13,7 @@ import qualified Data.IntSet as IntSet
 import           Data.IntSet ( IntSet )
 -- Local library imports
 import qualified Data.IntEqRel as IntEqRel
-import           Data.IntEqRel ( IntEqRel, areEquivalent, empty, equate, equateAll, equivalenceClass, equivalenceClasses, combine )
+import           Data.IntEqRel ( IntEqRel, areEquivalent, empty, equate, equateAll, equivalenceClass, equivalenceClasses, combine, fromList )
 
 
 -- TODO: Make tests exhaustive. They are not exhaustive yet by far. Only unit
@@ -76,6 +76,10 @@ unitTests =
       assertEqual [] (toSetSet [[1,2,26], [24,25], [16,17,18]]) (Set.fromList $ fst $ equivalenceClasses r)
   , testCase "combine" $
       assertEqual [] (toSetSet [[3,4], [24,25], [1,2,16,17,18,22,26]]) (Set.fromList $ fst $ equivalenceClasses $ combine r q)
+  , testCase "fromList 1" $
+      assertBool [] (fst $ areEquivalent 4 6 $ fromList [[1,2],[4,5,6],[7]])
+  , testCase "fromList 2" $
+      assertBool [] (not $ fst $ areEquivalent 6 7 $ fromList [[1,2],[4,5,6],[7]])
   ]
 
 -- | Helper. Converts a list of lists to a set of sets.
