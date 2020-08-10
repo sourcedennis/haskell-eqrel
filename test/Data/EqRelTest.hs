@@ -11,7 +11,10 @@ import qualified Data.Set as Set
 import           Data.Set ( Set )
 -- Local library imports
 import qualified Data.EqRel as EqRel
-import           Data.EqRel ( EqRel, areEquivalent, empty, equate, equateAll, equivalenceClass, equivalenceClasses, combine )
+import           Data.EqRel
+  ( EqRel, areEquivalent, empty, equate, equateAll, equivalenceClass
+  , equivalenceClasses, combine
+  )
 
 
 -- TODO: Make tests exhaustive. They are not exhaustive yet by far. Only unit

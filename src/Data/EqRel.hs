@@ -196,6 +196,9 @@ combine a b =
   -- Loop over all equivalence classes in 'b' and insert them into 'a'
   foldr (equateAll . Set.toList) a (fst $ equivalenceClasses b)
 
+
+-- # Helpers (Internal) #
+
 -- | Private. /O(log n)/. Returns the representative of the equivalence class
 -- that the provided element is a member of. If the element is not part of any
 -- defined equivalence classes, 'Nothing' is returned as the first element.
@@ -222,9 +225,6 @@ representative a r@(EqRel m) =
         -- A link node points nowhere. Tree construction ensures this does not
         -- happen.
         (Nothing, _)  -> error "Invalid Tree"
-
-
--- # Helpers (Internal) #
 
 -- | Applies the function to the first element of the tuple.
 mapFst :: ( a -> c ) -> ( a, b ) -> ( c, b )

@@ -12,7 +12,10 @@ import           Data.HashSet ( HashSet )
 import           Data.Hashable ( Hashable )
 -- Local library imports
 import qualified Data.HashEqRel as HashEqRel
-import           Data.HashEqRel ( HashEqRel, areEquivalent, empty, equate, equateAll, equivalenceClass, equivalenceClasses, combine )
+import           Data.HashEqRel
+  ( HashEqRel, areEquivalent, empty, equate, equateAll, equivalenceClass
+  , equivalenceClasses, combine
+  )
 
 
 -- TODO: Make tests exhaustive. They are not exhaustive yet by far. Only unit

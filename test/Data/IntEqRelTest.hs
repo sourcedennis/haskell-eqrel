@@ -13,7 +13,10 @@ import qualified Data.IntSet as IntSet
 import           Data.IntSet ( IntSet )
 -- Local library imports
 import qualified Data.IntEqRel as IntEqRel
-import           Data.IntEqRel ( IntEqRel, areEquivalent, empty, equate, equateAll, equivalenceClass, equivalenceClasses, combine, fromList )
+import           Data.IntEqRel
+  ( IntEqRel, areEquivalent, empty, equate, equateAll, equivalenceClass
+  , equivalenceClasses, combine, fromList
+  )
 
 
 -- TODO: Make tests exhaustive. They are not exhaustive yet by far. Only unit
