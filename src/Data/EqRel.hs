@@ -35,9 +35,9 @@ module Data.EqRel
   , equate
   , equateAll
     -- * Query
-  , areEquivalent
-  , equivalenceClass
-  , equivalenceClasses
+  , areEq
+  , eqClass
+  , eqClasses
     -- * Combine
   , combine
   ) where
@@ -117,8 +117,8 @@ equateAll xs r = foldr ($) r $ zipWith equate xs (safeTail xs)
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-areEquivalent :: Ord a => a -> a -> EqRel a -> (Bool, EqRel a)
-areEquivalent a b r =
+areEq :: Ord a => a -> a -> EqRel a -> (Bool, EqRel a)
+areEq a b r =
   case representative a r of
     (Nothing,         r2) -> (a == b, r2)
     (Just (aRepr, _), r2) ->
@@ -134,8 +134,8 @@ areEquivalent a b r =
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-equivalenceClass :: Ord a => a -> EqRel a -> (Set a, EqRel a)
-equivalenceClass a r@(EqRel m) =
+eqClass :: Ord a => a -> EqRel a -> (Set a, EqRel a)
+eqClass a r@(EqRel m) =
   case representative a r of
     -- When 'a' has no representative in the tree, it has simply not been added
     -- to the tree. In that case, 'a' is only equal to itself (by refexivity).
@@ -168,8 +168,8 @@ equivalenceClass a r@(EqRel m) =
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-equivalenceClasses :: Ord a => EqRel a -> ([Set a], EqRel a)
-equivalenceClasses r@(EqRel m) =
+eqClasses :: Ord a => EqRel a -> ([Set a], EqRel a)
+eqClasses r@(EqRel m) =
   mapFst Map.elems $ foldr step (Map.empty, r) $ Map.keys m
   where
   step :: Ord a => a -> (Map a (Set a), EqRel a) -> (Map a (Set a), EqRel a)
@@ -194,7 +194,7 @@ equivalenceClasses r@(EqRel m) =
 combine :: Ord a => EqRel a -> EqRel a -> EqRel a
 combine a b =
   -- Loop over all equivalence classes in 'b' and insert them into 'a'
-  foldr (equateAll . Set.toList) a (fst $ equivalenceClasses b)
+  foldr (equateAll . Set.toList) a (fst $ eqClasses b)
 
 
 -- # Helpers (Internal) #
@@ -240,7 +240,7 @@ safeTail (_:xs) = xs
 -- # Class instances
 
 instance (Ord a, Show a) => Show (EqRel a) where
-  show = show . map Set.toList . fst . equivalenceClasses
+  show = show . map Set.toList . fst . eqClasses
 
 instance Ord a => Semigroup (EqRel a) where
   (<>) = combine

@@ -24,23 +24,23 @@ The three mentioned structures have almost identical interfaces. This example wo
 main :: IO ()
 main =
   do
-    print $ fst $ areEquivalent "A" "B" empty -- False
+    print $ fst $ areEq "A" "B" empty -- False
     
-    print $ fst $ areEquivalent "A" "A" empty -- True (reflexivity)
+    print $ fst $ areEq "A" "A" empty -- True (reflexivity)
 
-    print $ fst $ areEquivalent "A" "B" $ equate "A" "B" empty -- True
+    print $ fst $ areEq "A" "B" $ equate "A" "B" empty -- True
 
     let rel = equate "C" "D" $ equate "A" "B" empty
-    print $ fst $ areEquivalent "D" "A" rel -- False
+    print $ fst $ areEq "D" "A" rel -- False
 
     let rel2 = equate "B" "C" rel
-    print $ fst $ areEquivalent "D" "A" rel2 -- True (transitivity)
+    print $ fst $ areEq "D" "A" rel2 -- True (transitivity)
 
     let rel3 = equate "X" "Z" $ equate "D" "Y" empty
-    print $ fst $ areEquivalent "A" "Y" rel3 -- False
+    print $ fst $ areEq "A" "Y" rel3 -- False
 
     let rel4 = rel2 `combine` rel3
-    print $ fst $ areEquivalent "A" "Y" rel4 -- True (A=D in rel2; D=Y in rel3)
+    print $ fst $ areEq "A" "Y" rel4 -- True (A=D in rel2; D=Y in rel3)
 ```
 
 ## License

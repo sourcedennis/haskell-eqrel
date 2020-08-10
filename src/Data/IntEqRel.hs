@@ -30,9 +30,9 @@ module Data.IntEqRel
   , equate
   , equateAll
     -- * Query
-  , areEquivalent
-  , equivalenceClass
-  , equivalenceClasses
+  , areEq
+  , eqClass
+  , eqClasses
     -- * Combine
   , combine
     -- * Conversion
@@ -116,8 +116,8 @@ equateAll xs r = foldr ($) r $ zipWith equate xs (safeTail xs)
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-areEquivalent :: Int -> Int -> IntEqRel -> (Bool, IntEqRel)
-areEquivalent a b r =
+areEq :: Int -> Int -> IntEqRel -> (Bool, IntEqRel)
+areEq a b r =
   case representative a r of
     (Nothing,         r2) -> (a == b, r2)
     (Just (aRepr, _), r2) ->
@@ -133,8 +133,8 @@ areEquivalent a b r =
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-equivalenceClass :: Int -> IntEqRel -> (IntSet, IntEqRel)
-equivalenceClass a r@(IntEqRel m) =
+eqClass :: Int -> IntEqRel -> (IntSet, IntEqRel)
+eqClass a r@(IntEqRel m) =
   case representative a r of
     -- When 'a' has no representative in the tree, it has simply not been added
     -- to the tree. In that case, 'a' is only equal to itself (by refexivity).
@@ -167,8 +167,8 @@ equivalenceClass a r@(IntEqRel m) =
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-equivalenceClasses :: IntEqRel -> ([IntSet], IntEqRel)
-equivalenceClasses r@(IntEqRel m) =
+eqClasses :: IntEqRel -> ([IntSet], IntEqRel)
+eqClasses r@(IntEqRel m) =
   mapFst IntMap.elems $ foldr step (IntMap.empty, r) $ IntMap.keys m
   where
   step :: Int -> (IntMap IntSet, IntEqRel) -> (IntMap IntSet, IntEqRel)
@@ -193,7 +193,7 @@ equivalenceClasses r@(IntEqRel m) =
 combine :: IntEqRel -> IntEqRel -> IntEqRel
 combine a b =
   -- Loop over all equivalence classes in 'b' and insert them into 'a'
-  foldr (equateAll . IntSet.toList) a (fst $ equivalenceClasses b)
+  foldr (equateAll . IntSet.toList) a (fst $ eqClasses b)
 
 
 -- # Conversion #
@@ -253,7 +253,7 @@ safeTail (_:xs) = xs
 -- # Class instances
 
 instance Show IntEqRel where
-  show = show . map IntSet.toList . fst . equivalenceClasses
+  show = show . map IntSet.toList . fst . eqClasses
 
 instance Semigroup IntEqRel where
   (<>) = combine

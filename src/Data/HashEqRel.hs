@@ -32,9 +32,9 @@ module Data.HashEqRel
   , equate
   , equateAll
     -- * Query
-  , areEquivalent
-  , equivalenceClass
-  , equivalenceClasses
+  , areEq
+  , eqClass
+  , eqClasses
     -- * Combine
   , combine
   ) where
@@ -118,8 +118,8 @@ equateAll xs r = foldr ($) r $ zipWith equate xs (safeTail xs)
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-areEquivalent :: (Eq a, Hashable a) => a -> a -> HashEqRel a -> (Bool, HashEqRel a)
-areEquivalent a b r =
+areEq :: (Eq a, Hashable a) => a -> a -> HashEqRel a -> (Bool, HashEqRel a)
+areEq a b r =
   case representative a r of
     (Nothing,         r2) -> (a == b, r2)
     (Just (aRepr, _), r2) ->
@@ -135,8 +135,8 @@ areEquivalent a b r =
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-equivalenceClass :: (Eq a, Hashable a) => a -> HashEqRel a -> (HashSet a, HashEqRel a)
-equivalenceClass a r@(HashEqRel m) =
+eqClass :: (Eq a, Hashable a) => a -> HashEqRel a -> (HashSet a, HashEqRel a)
+eqClass a r@(HashEqRel m) =
   case representative a r of
     -- When 'a' has no representative in the tree, it has simply not been added
     -- to the tree. In that case, 'a' is only equal to itself (by refexivity).
@@ -169,8 +169,8 @@ equivalenceClass a r@(HashEqRel m) =
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-equivalenceClasses :: (Eq a, Hashable a) => HashEqRel a -> ([HashSet a], HashEqRel a)
-equivalenceClasses r@(HashEqRel m) =
+eqClasses :: (Eq a, Hashable a) => HashEqRel a -> ([HashSet a], HashEqRel a)
+eqClasses r@(HashEqRel m) =
   mapFst HashMap.elems $ foldr step (HashMap.empty, r) $ HashMap.keys m
   where
   step :: (Eq a, Hashable a) => a -> (HashMap a (HashSet a), HashEqRel a) -> (HashMap a (HashSet a), HashEqRel a)
@@ -195,7 +195,7 @@ equivalenceClasses r@(HashEqRel m) =
 combine :: (Eq a, Hashable a) => HashEqRel a -> HashEqRel a -> HashEqRel a
 combine a b =
   -- Loop over all equivalence classes in 'b' and insert them into 'a'
-  foldr (equateAll . HashSet.toList) a (fst $ equivalenceClasses b)
+  foldr (equateAll . HashSet.toList) a (fst $ eqClasses b)
 
 
 -- # Helpers (Internal) #
@@ -241,7 +241,7 @@ safeTail (_:xs) = xs
 -- # Class instances
 
 instance (Eq a, Hashable a, Show a) => Show (HashEqRel a) where
-  show = show . map HashSet.toList . fst . equivalenceClasses
+  show = show . map HashSet.toList . fst . eqClasses
 
 instance (Eq a, Hashable a) => Semigroup (HashEqRel a) where
   (<>) = combine

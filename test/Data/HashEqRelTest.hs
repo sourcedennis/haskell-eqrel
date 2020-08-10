@@ -13,9 +13,7 @@ import           Data.Hashable ( Hashable )
 -- Local library imports
 import qualified Data.HashEqRel as HashEqRel
 import           Data.HashEqRel
-  ( HashEqRel, areEquivalent, empty, equate, equateAll, equivalenceClass
-  , equivalenceClasses, combine
-  )
+  ( HashEqRel, areEq, empty, equate, equateAll, eqClass, eqClasses, combine )
 
 
 -- TODO: Make tests exhaustive. They are not exhaustive yet by far. Only unit
@@ -46,39 +44,39 @@ q = equate "C" "D" $ equateAll ["R","V","Z"] empty
 unitTests :: [TestTree]
 unitTests =
   [ testCase "equality stored" $
-      assertBool [] (fst $ areEquivalent "A" "B" $ equate "A" "B" empty)
+      assertBool [] (fst $ areEq "A" "B" $ equate "A" "B" empty)
   , testCase "reflexive" $
-      assertBool [] (fst $ areEquivalent "A" "A" empty)
+      assertBool [] (fst $ areEq "A" "A" empty)
   , testCase "symmetric" $
-      assertBool [] (fst $ areEquivalent "B" "A" $ equate "A" "B" empty)
+      assertBool [] (fst $ areEq "B" "A" $ equate "A" "B" empty)
   , testCase "transitive" $
-      assertBool [] (fst $ areEquivalent "C" "E" $ equate "C" "D" $ equate "D" "E" empty)
+      assertBool [] (fst $ areEq "C" "E" $ equate "C" "D" $ equate "D" "E" empty)
   , testCase "no magic 1" $
-      assertBool [] (not $ fst $ areEquivalent "A" "B" empty)
+      assertBool [] (not $ fst $ areEq "A" "B" empty)
   , testCase "no magic 2" $
-      assertBool [] (not $ fst $ areEquivalent "A" "B" $ equateAll ["C", "D", "X", "Z"] empty)
+      assertBool [] (not $ fst $ areEq "A" "B" $ equateAll ["C", "D", "X", "Z"] empty)
   , testCase "no magic transitive 1" $
-      assertBool [] (not $ fst $ areEquivalent "D" "A" $ equate "C" "D" $ equate "A" "B" empty)
+      assertBool [] (not $ fst $ areEq "D" "A" $ equate "C" "D" $ equate "A" "B" empty)
   , testCase "no magic transitive 2" $
-      assertBool [] (not $ fst $ areEquivalent "A" "D" $ equate "C" "D" $ equate "A" "B" empty)
+      assertBool [] (not $ fst $ areEq "A" "D" $ equate "C" "D" $ equate "A" "B" empty)
   , testCase "no magic transitive 3" $
-      assertBool [] (not $ fst $ areEquivalent "C" "A" $ equate "C" "D" $ equate "A" "B" empty)
+      assertBool [] (not $ fst $ areEq "C" "A" $ equate "C" "D" $ equate "A" "B" empty)
   , testCase "no magic transitive 4" $
-      assertBool [] (not $ fst $ areEquivalent "A" "C" $ equate "C" "D" $ equate "A" "B" empty)
+      assertBool [] (not $ fst $ areEq "A" "C" $ equate "C" "D" $ equate "A" "B" empty)
   , testCase "no magic transitive 5" $
-      assertBool [] (not $ fst $ areEquivalent "D" "B" $ equate "C" "D" $ equate "A" "B" empty)
+      assertBool [] (not $ fst $ areEq "D" "B" $ equate "C" "D" $ equate "A" "B" empty)
   , testCase "no magic transitive 6" $
-      assertBool [] (not $ fst $ areEquivalent "B" "D" $ equate "C" "D" $ equate "A" "B" empty)
+      assertBool [] (not $ fst $ areEq "B" "D" $ equate "C" "D" $ equate "A" "B" empty)
   , testCase "no magic transitive 7" $
-      assertBool [] (not $ fst $ areEquivalent "C" "B" $ equate "C" "D" $ equate "A" "B" empty)
+      assertBool [] (not $ fst $ areEq "C" "B" $ equate "C" "D" $ equate "A" "B" empty)
   , testCase "no magic transitive 8" $
-      assertBool [] (not $ fst $ areEquivalent "B" "C" $ equate "C" "D" $ equate "A" "B" empty)
+      assertBool [] (not $ fst $ areEq "B" "C" $ equate "C" "D" $ equate "A" "B" empty)
   , testCase "class extraction" $
-      assertEqual [] (HashSet.fromList ["A","B","Z"]) (fst $ equivalenceClass "Z" r)
+      assertEqual [] (HashSet.fromList ["A","B","Z"]) (fst $ eqClass "Z" r)
   , testCase "classes extraction" $
-      assertEqual [] (toSetSet [["A","B","Z"], ["X","Y"], ["P","Q","R"]]) (HashSet.fromList $ fst $ equivalenceClasses r)
+      assertEqual [] (toSetSet [["A","B","Z"], ["X","Y"], ["P","Q","R"]]) (HashSet.fromList $ fst $ eqClasses r)
   , testCase "combine" $
-      assertEqual [] (toSetSet [["C","D"], ["X","Y"], ["A","B","P","Q","R","V","Z"]]) (HashSet.fromList $ fst $ equivalenceClasses $ combine r q)
+      assertEqual [] (toSetSet [["C","D"], ["X","Y"], ["A","B","P","Q","R","V","Z"]]) (HashSet.fromList $ fst $ eqClasses $ combine r q)
   ]
 
 -- | Helper. Converts a list of lists to a set of sets.
