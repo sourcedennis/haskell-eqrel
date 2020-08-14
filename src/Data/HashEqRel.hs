@@ -12,7 +12,7 @@
 --
 -- An equivalence relation where equivalence between elements has to be
 -- explicitly stated with the provided functions. The time complexity stated for
--- each function is _amortized_.
+-- each function is /amortized/.
 --
 -- This module requires that elements implement the 'Hashable' trait.
 --
@@ -37,6 +37,8 @@ module Data.HashEqRel
   , eqClasses
     -- * Combine
   , combine
+    -- * Conversion
+  , fromList
   ) where
 
 -- Stdlib imports
@@ -102,8 +104,10 @@ equate a b r =
     -- Make the small set point to the big set
     HashEqRel $ HashMap.insert reprB (NodeLink a) $ HashMap.insert reprA (NodeRoot (aSize + bSize)) $ treeMap r3
 
--- | /O(m log n)/. Equate all provided elements in the equivalence relation.
--- This unifies the equivalence classes of all elements.
+-- | /O(m log (n+m))/. Equate all provided elements in the equivalence relation.
+-- This unifies the equivalence classes of all provided elements. Note that /m/
+-- represents the number of inserted elements, whereas /n/ is the number of
+-- elements already in the relation.
 equateAll :: (Eq a, Hashable a) => [a] -> HashEqRel a -> HashEqRel a
 equateAll xs r = foldr ($) r $ zipWith equate xs (safeTail xs)
 
@@ -112,6 +116,11 @@ equateAll xs r = foldr ($) r $ zipWith equate xs (safeTail xs)
 
 -- | /O(log n)/. Returns 'True' iff two elements are equal in the
 -- provided equivalence relation.
+--
+-- Example:
+--
+-- > fst $ areEq 1 2 $ equateAll [1,2,7] $ equate [6,8] empty = True
+-- > fst $ areEq 1 2 $ equateAll [1,3,7] $ equate [6,8] empty = False
 --
 -- The second element in the tuple is the updated input equivalence relation.
 -- It may safely be discarded w.r.t. correctness. However, it is advised to
@@ -129,6 +138,11 @@ areEq a b r =
 
 -- | /O(n log n)/. Returns all elements in the equivalence class of
 -- the provided element.
+--
+-- Example:
+--
+-- > fst $ eqClass 1 $ equateAll [1,4,5] $ equate 7 8 empty =
+-- >   fromList [1,4,5]
 --
 -- The second element in the tuple is the updated input equivalence relation.
 -- It may safely be discarded w.r.t. correctness. However, it is advised to
@@ -189,13 +203,32 @@ eqClasses r@(HashEqRel m) =
 -- relations into a new equivalence relation.
 --
 -- For inputs A and B, and output C, holds the following relation:
--- ((a = b) in A) or ((a = b) in B) => ((a = b) in C)
--- Note that C is another equivalence relation, which is reflexive, symmetric,
--- and transitive.
+-- @(xAy or xBy) => xCy@. Note that C is another equivalence relation, which is
+-- reflexive, symmetric, and transitive.
+--
+-- Example:
+--
+-- > let a = fromList [[1,6,7],[2,8]]
+-- > let b = fromList [[2,3],[8,9]]
+-- > combine a b = fromList [[1,6,7],[2,3,8,9]]
 combine :: (Eq a, Hashable a) => HashEqRel a -> HashEqRel a -> HashEqRel a
 combine a b =
   -- Loop over all equivalence classes in 'b' and insert them into 'a'
   foldr (equateAll . HashSet.toList) a (fst $ eqClasses b)
+
+
+-- # Conversion #
+
+-- | /O(n log n)/. Constructs a equivalence relation from the given list of
+-- equivalence classes.
+--
+-- Example:
+--
+-- > let rel = fromList [[1,2],[4,5,6],[7]]
+-- > fst (areEquivalent 4 6 rel) = True
+-- > fst (areEquivalent 6 7 rel) = False
+fromList :: (Eq a, Hashable a) => [[a]] -> HashEqRel a
+fromList = foldr equateAll empty
 
 
 -- # Helpers (Internal) #

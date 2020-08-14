@@ -12,7 +12,7 @@
 --
 -- An equivalence relation where equivalence between elements has to be
 -- explicitly stated with the provided functions. Elements are represented by
--- the system ints. The time complexity stated for each function is _amortized_.
+-- the system ints. The time complexity stated for each function is /amortized/.
 --
 -- Note that many function returned a tuple where the second element is another
 -- equivalence relation. Often this equivalence relation is (semantically)
@@ -100,8 +100,10 @@ equate a b r =
     -- Make the small set point to the big set
     IntEqRel $ IntMap.insert reprB (NodeLink a) $ IntMap.insert reprA (NodeRoot (aSize + bSize)) $ treeMap r3
 
--- | /O(m log n)/. Equate all provided elements in the equivalence relation.
--- This unifies the equivalence classes of all elements.
+-- | /O(m log (n+m))/. Equate all provided elements in the equivalence relation.
+-- This unifies the equivalence classes of all provided elements. Note that /m/
+-- represents the number of inserted elements, whereas /n/ is the number of
+-- elements already in the relation.
 equateAll :: [Int] -> IntEqRel -> IntEqRel
 equateAll xs r = foldr ($) r $ zipWith equate xs (safeTail xs)
 
@@ -110,6 +112,11 @@ equateAll xs r = foldr ($) r $ zipWith equate xs (safeTail xs)
 
 -- | /O(log n)/. Returns 'True' iff two elements are equal in the
 -- provided equivalence class.
+--
+-- Example:
+--
+-- > fst $ areEq 1 2 $ equateAll [1,2,7] $ equate [6,8] empty = True
+-- > fst $ areEq 1 2 $ equateAll [1,3,7] $ equate [6,8] empty = False
 --
 -- The second element in the tuple is the updated input equivalence relation.
 -- It may safely be discarded w.r.t. correctness. However, it is advised to
@@ -127,6 +134,11 @@ areEq a b r =
 
 -- | /O(n log n)/. Returns all elements in the equivalence class of
 -- the provided element.
+--
+-- Example:
+--
+-- > fst $ eqClass 1 $ equateAll [1,4,5] $ equate 7 8 empty =
+-- >   fromList [1,4,5]
 --
 -- The second element in the tuple is the updated input equivalence relation.
 -- It may safely be discarded w.r.t. correctness. However, it is advised to
@@ -187,9 +199,14 @@ eqClasses r@(IntEqRel m) =
 -- relations into a new equivalence relation.
 --
 -- For inputs A and B, and output C, holds the following relation:
--- ((a = b) in A) or ((a = b) in B) => ((a = b) in C)
--- Note that C is another equivalence relation, which is reflexive, symmetric,
--- and transitive.
+-- @(xAy or xBy) => xCy@. Note that C is another equivalence relation, which is
+-- reflexive, symmetric, and transitive.
+--
+-- Example:
+--
+-- > let a = fromList [[1,6,7],[2,8]]
+-- > let b = fromList [[2,3],[8,9]]
+-- > combine a b = fromList [[1,6,7],[2,3,8,9]]
 combine :: IntEqRel -> IntEqRel -> IntEqRel
 combine a b =
   -- Loop over all equivalence classes in 'b' and insert them into 'a'
