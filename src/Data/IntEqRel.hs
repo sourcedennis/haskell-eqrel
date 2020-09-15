@@ -33,6 +33,7 @@ module Data.IntEqRel
   , areEq
   , eqClass
   , eqClasses
+  , representative
     -- * Combine
   , combine
     -- * Conversion
@@ -88,8 +89,8 @@ empty = IntEqRel IntMap.empty
 -- the equivalence classes both elements are members of.
 equate :: Int -> Int -> IntEqRel -> IntEqRel
 equate a b r =
-  let ((reprA, aSize), r2) = mapFst (fromMaybe (a, 1)) (representative a r)
-      ((reprB, bSize), r3) = mapFst (fromMaybe (b, 1)) (representative b r2)
+  let ((reprA, aSize), r2) = mapFst (fromMaybe (a, 1)) (representativeWithSize a r)
+      ((reprB, bSize), r3) = mapFst (fromMaybe (b, 1)) (representativeWithSize b r2)
   in
   if reprA == reprB then
     r3 -- 'a' and 'b' are already equal
@@ -125,12 +126,9 @@ equateAll xs r = foldr ($) r $ zipWith equate xs (safeTail xs)
 -- time complexity.
 areEq :: Int -> Int -> IntEqRel -> (Bool, IntEqRel)
 areEq a b r =
-  case representative a r of
-    (Nothing,         r2) -> (a == b, r2)
-    (Just (aRepr, _), r2) ->
-      case representative b r2 of
-        (Nothing,         r3) -> (False, r3)
-        (Just (bRepr, _), r3) -> (aRepr == bRepr, r3)
+  let (aRepr, r2) = representative a r
+      (bRepr, r3) = representative b r2
+  in (aRepr == bRepr, r3)
 
 -- | /O(n log n)/. Returns all elements in the equivalence class of
 -- the provided element.
@@ -147,7 +145,7 @@ areEq a b r =
 -- time complexity.
 eqClass :: Int -> IntEqRel -> (IntSet, IntEqRel)
 eqClass a r@(IntEqRel m) =
-  case representative a r of
+  case representativeWithSize a r of
     -- When 'a' has no representative in the tree, it has simply not been added
     -- to the tree. In that case, 'a' is only equal to itself (by refexivity).
     (Nothing, r2) -> (IntSet.singleton a, r2)
@@ -160,15 +158,12 @@ eqClass a r@(IntEqRel m) =
   -- (with collapsed paths) equivalence is returned as second tuple element.
   step :: Int -> Int -> ([Int], IntEqRel) -> ([Int], IntEqRel)
   step aRepr b (s, r) =
-    case representative b r of
-      (Just (bRepr, _), r2) ->
-        if aRepr == bRepr then
-          (b:s, r2)
-        else
-          (s, r2)
-      -- A key in the tree references nothing. Tree construction ensures this
-      -- does not happen.
-      (Nothing, _) -> error "Invalid Tree"
+    let (bRepr, r2) = representative b r
+    in
+    if aRepr == bRepr then
+      (b:s, r2)
+    else
+      (s, r2)
 
 -- | /O(n log n)/. Returns all equivalence classes defined in the relation. Note
 -- that classes with only a single element are never returned by this function
@@ -185,13 +180,20 @@ eqClasses r@(IntEqRel m) =
   where
   step :: Int -> (IntMap IntSet, IntEqRel) -> (IntMap IntSet, IntEqRel)
   step a (res, r) =
-    case representative a r of
-      (Just (aRepr, _), r2) ->
-        (IntMap.alter (Just . IntSet.insert a . fromMaybe (IntSet.singleton a)) aRepr res, r2)
-      -- A key in the tree references nothing. Tree construction ensures this
-      -- does not happen.
-      (Nothing, _) -> error "Invalid Tree"
+    let (aRepr, r2) = representative a r
+    in
+    (IntMap.alter (Just . IntSet.insert a . fromMaybe (IntSet.singleton a)) aRepr res, r2)
 
+-- | /O(n log n)/. Returns the representative of the element's equivalence
+-- class.
+--
+-- The second element in the tuple is the updated input equivalence relation.
+-- It may safely be discarded w.r.t. correctness. However, it is advised to
+-- use it going forward instead of the input relation w.r.t. performance.
+-- Internal data is updated (paths are collapsed) which ensures the amortized
+-- time complexity.
+representative :: Int -> IntEqRel -> (Int, IntEqRel)
+representative a = mapFst (maybe a fst) . representativeWithSize a
 
 -- # Combine #
 
@@ -243,13 +245,13 @@ fromList = foldr equateAll empty
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-representative :: Int -> IntEqRel -> (Maybe (Int, ClassSize), IntEqRel)
-representative a r@(IntEqRel m) =
+representativeWithSize :: Int -> IntEqRel -> (Maybe (Int, ClassSize), IntEqRel)
+representativeWithSize a r@(IntEqRel m) =
   case a `IntMap.lookup` m of
     Nothing -> (Nothing, r)
     Just (NodeRoot n) -> (Just (a, n), r)
     Just (NodeLink aNext)   ->
-      case representative aNext r of
+      case representativeWithSize aNext r of
         -- Collapse the path
         (Just (repr, n), r2) -> (Just (repr, n), IntEqRel $ IntMap.insert a (NodeLink repr) $ treeMap r2)
         -- A link node points nowhere. Tree construction ensures this does not

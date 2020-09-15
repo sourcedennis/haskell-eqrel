@@ -35,6 +35,7 @@ module Data.HashEqRel
   , areEq
   , eqClass
   , eqClasses
+  , representative
     -- * Combine
   , combine
     -- * Conversion
@@ -92,8 +93,8 @@ empty = HashEqRel HashMap.empty
 -- the equivalence classes both elements are members of.
 equate :: (Eq a, Hashable a) => a -> a -> HashEqRel a -> HashEqRel a
 equate a b r =
-  let ((reprA, aSize), r2) = mapFst (fromMaybe (a, 1)) (representative a r)
-      ((reprB, bSize), r3) = mapFst (fromMaybe (b, 1)) (representative b r2)
+  let ((reprA, aSize), r2) = mapFst (fromMaybe (a, 1)) (representativeWithSize a r)
+      ((reprB, bSize), r3) = mapFst (fromMaybe (b, 1)) (representativeWithSize b r2)
   in
   if reprA == reprB then
     r3 -- 'a' and 'b' are already equal
@@ -129,12 +130,9 @@ equateAll xs r = foldr ($) r $ zipWith equate xs (safeTail xs)
 -- time complexity.
 areEq :: (Eq a, Hashable a) => a -> a -> HashEqRel a -> (Bool, HashEqRel a)
 areEq a b r =
-  case representative a r of
-    (Nothing,         r2) -> (a == b, r2)
-    (Just (aRepr, _), r2) ->
-      case representative b r2 of
-        (Nothing,         r3) -> (False, r3)
-        (Just (bRepr, _), r3) -> (aRepr == bRepr, r3)
+  let (aRepr, r2) = representative a r
+      (bRepr, r3) = representative b r2
+  in (aRepr == bRepr, r3)
 
 -- | /O(n log n)/. Returns all elements in the equivalence class of
 -- the provided element.
@@ -151,7 +149,7 @@ areEq a b r =
 -- time complexity.
 eqClass :: (Eq a, Hashable a) => a -> HashEqRel a -> (HashSet a, HashEqRel a)
 eqClass a r@(HashEqRel m) =
-  case representative a r of
+  case representativeWithSize a r of
     -- When 'a' has no representative in the tree, it has simply not been added
     -- to the tree. In that case, 'a' is only equal to itself (by refexivity).
     (Nothing, r2) -> (HashSet.singleton a, r2)
@@ -164,15 +162,12 @@ eqClass a r@(HashEqRel m) =
   -- (with collapsed paths) equivalence is returned as second tuple element.
   step :: (Eq a, Hashable a) => a -> a -> ([a], HashEqRel a) -> ([a], HashEqRel a)
   step aRepr b (s, r) =
-    case representative b r of
-      (Just (bRepr, _), r2) ->
-        if aRepr == bRepr then
-          (b:s, r2)
-        else
-          (s, r2)
-      -- A key in the tree references nothing. Tree construction ensures this
-      -- does not happen.
-      (Nothing, _) -> error "Invalid Tree"
+    let (bRepr, r2) = representative b r
+    in
+    if aRepr == bRepr then
+      (b:s, r2)
+    else
+      (s, r2)
 
 -- | /O(n log n)/. Returns all equivalence classes defined in the relation. Note
 -- that classes with only a single element are never returned by this function
@@ -189,12 +184,20 @@ eqClasses r@(HashEqRel m) =
   where
   step :: (Eq a, Hashable a) => a -> (HashMap a (HashSet a), HashEqRel a) -> (HashMap a (HashSet a), HashEqRel a)
   step a (res, r) =
-    case representative a r of
-      (Just (aRepr, _), r2) ->
-        (HashMap.alter (Just . HashSet.insert a . fromMaybe (HashSet.singleton a)) aRepr res, r2)
-      -- A key in the tree references nothing. Tree construction ensures this
-      -- does not happen.
-      (Nothing, _) -> error "Invalid Tree"
+    let (aRepr, r2) = representative a r
+    in
+    (HashMap.alter (Just . HashSet.insert a . fromMaybe (HashSet.singleton a)) aRepr res, r2)
+
+-- | /O(n log n)/. Returns the representative of the element's equivalence
+-- class.
+--
+-- The second element in the tuple is the updated input equivalence relation.
+-- It may safely be discarded w.r.t. correctness. However, it is advised to
+-- use it going forward instead of the input relation w.r.t. performance.
+-- Internal data is updated (paths are collapsed) which ensures the amortized
+-- time complexity.
+representative :: (Eq a, Hashable a) => a -> HashEqRel a -> (a, HashEqRel a)
+representative a = mapFst (maybe a fst) . representativeWithSize a
 
 
 -- # Combine #
@@ -233,27 +236,28 @@ fromList = foldr equateAll empty
 
 -- # Helpers (Internal) #
 
--- | Private. /O(log n)/. Returns the representative of the equivalence class
--- that the provided element is a member of. If the element is not part of any
--- defined equivalence classes, 'Nothing' is returned as the first element.
+-- | Private. /O(log n)/. Returns the representative of the element's
+-- equivalence class, together with the number of elements in the equivalence
+-- class. If the element is not part of any defined equivalence classes,
+-- 'Nothing' is returned as the first element.
 --
 -- Note that, when 'Nothing' is returned, the element is still in an equivalence
 -- class; namely the class containing only the element itself (by reflexivity).
 -- However, those classes are not stored in the tree. In that case, use:
--- > mapFst (fromMaybe (a, 1)) (representative a r)
+-- > mapFst (fromMaybe (a, 1)) (representativeWithSize a r)
 --
 -- The second element in the tuple is the updated input equivalence relation.
 -- It may safely be discarded w.r.t. correctness. However, it is advised to
 -- use it going forward instead of the input relation w.r.t. performance.
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
-representative :: (Eq a, Hashable a) => a -> HashEqRel a -> (Maybe (a, ClassSize), HashEqRel a)
-representative a r@(HashEqRel m) =
+representativeWithSize :: (Eq a, Hashable a) => a -> HashEqRel a -> (Maybe (a, ClassSize), HashEqRel a)
+representativeWithSize a r@(HashEqRel m) =
   case a `HashMap.lookup` m of
     Nothing -> (Nothing, r)
     Just (NodeRoot n) -> (Just (a, n), r)
     Just (NodeLink aNext)   ->
-      case representative aNext r of
+      case representativeWithSize aNext r of
         -- Collapse the path
         (Just (repr, n), r2) -> (Just (repr, n), HashEqRel $ HashMap.insert a (NodeLink repr) $ treeMap r2)
         -- A link node points nowhere. Tree construction ensures this does not
