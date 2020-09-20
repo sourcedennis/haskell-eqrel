@@ -39,15 +39,18 @@ module Data.IntEqRel
   , combine
     -- * Conversion
   , fromList
+  , freeze
   ) where
 
 -- Stdlib imports
 import           Data.Maybe ( fromMaybe )
--- External library imports
+-- Extra stdlib imports
 import qualified Data.IntMap as IntMap
 import           Data.IntMap ( IntMap )
 import qualified Data.IntSet as IntSet
 import           Data.IntSet ( IntSet )
+-- Local imports
+import           Data.Frozen.IntEqRelInternal ( FrozenIntEqRel (..) )
 
 
 -- This module is almost a verbatim copy of `Data.EqRel` and `Data.HashEqRel`.
@@ -182,14 +185,9 @@ eqClass a r@(IntEqRel m) =
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
 eqClasses :: IntEqRel -> ([IntSet], IntEqRel)
-eqClasses r@(IntEqRel m) =
-  mapFst IntMap.elems $ foldr step (IntMap.empty, r) $ IntMap.keys m
-  where
-  step :: Int -> (IntMap IntSet, IntEqRel) -> (IntMap IntSet, IntEqRel)
-  step a (res, r) =
-    let (aRepr, r2) = representative a r
-    in
-    (IntMap.alter (Just . IntSet.insert a . fromMaybe (IntSet.singleton a)) aRepr res, r2)
+eqClasses r =
+  let (classes, r') = eqClassesWithRepresentative r
+  in (map snd classes, r')
 
 -- | /O(n log n)/. Returns the representative of the element's equivalence
 -- class.
@@ -235,6 +233,21 @@ combine a b =
 fromList :: [[Int]] -> IntEqRel
 fromList = foldr equateAll empty
 
+-- | /O(n log n)/. Produces a frozen version of the equivalence relation:
+-- `FrozenIntEqRel`. While that representation cannot be modified, it can be
+-- queried significantly quicker.
+--
+-- Note that this function produces the fully collapsed equivalence relation as
+-- the second element of the returned tuple.
+freeze :: IntEqRel -> (FrozenIntEqRel, IntEqRel)
+freeze rel =
+  let (allClasses, rel') = eqClassesWithRepresentative rel
+      elements = foldr insertClass IntMap.empty allClasses
+  in (FrozenIntEqRel elements allClasses, rel')
+  where
+  insertClass :: (Int, IntSet) -> IntMap (Int, IntSet) -> IntMap (Int, IntSet)
+  insertClass (r,s) m = foldr (\x -> IntMap.insert x (r,s)) m (IntSet.toList s)
+
 
 -- # Helpers (Internal) #
 
@@ -265,6 +278,23 @@ representativeWithSize a r@(IntEqRel m) =
         -- happen.
         (Nothing, _)  -> error "Invalid Tree"
 
+-- | Private. /O(n log n)/. Returns all equivalence classes; each with their
+-- representative. Note that this collapses the entire tree. The relation with
+-- its entire tree collapsed is returned as the second element in the tuple.
+eqClassesWithRepresentative :: IntEqRel -> ([(Int, IntSet)], IntEqRel)
+eqClassesWithRepresentative r@(IntEqRel m) =
+  mapFst IntMap.assocs $ foldr step (IntMap.empty, r) $ IntMap.keys m
+  where
+  -- Adds a single element to the result. Keeps track of:
+  -- * A map whose keys are representatives, and whose values are the values in
+  --   its equivalence class.
+  -- * The input equivalence class whose internal representation may collapse
+  --   along each step. It's contents do not change, though.
+  step :: Int -> (IntMap IntSet, IntEqRel) -> (IntMap IntSet, IntEqRel)
+  step a (res, r) =
+    let (aRepr, r2) = representative a r
+    in (insertToSet aRepr a res, r2)
+
 -- | Applies the function to the first element of the tuple.
 mapFst :: ( a -> c ) -> ( a, b ) -> ( c, b )
 mapFst f (a, b) = (f a, b)
@@ -274,6 +304,11 @@ mapFst f (a, b) = (f a, b)
 safeTail :: [a] -> [a]
 safeTail []     = []
 safeTail (_:xs) = xs
+
+-- | Inserts a single element into a map containing sets of elements.
+insertToSet :: Int -> Int -> IntMap IntSet -> IntMap IntSet
+insertToSet k v =
+  IntMap.alter (Just . IntSet.insert v . fromMaybe IntSet.empty) k
 
 
 -- # Class instances

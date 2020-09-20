@@ -44,15 +44,18 @@ module Data.EqRel
   , combine
     -- * Conversion
   , fromList
+  , freeze
   ) where
 
 -- Stdlib imports
 import           Data.Maybe ( fromMaybe )
--- External library imports
+-- Extra stdlib imports
 import qualified Data.Map as Map
 import           Data.Map ( Map )
 import qualified Data.Set as Set
 import           Data.Set ( Set )
+-- Local imports
+import           Data.Frozen.EqRelInternal ( FrozenEqRel (..) )
 
 
 -- This module is almost a verbatim copy of `Data.HashEqRel`. Sadly, very few
@@ -177,7 +180,9 @@ eqClass a r@(EqRel m) =
 
 -- | /O(n log n)/. Returns all equivalence classes defined in the relation. Note
 -- that classes with only a single element are never returned by this function
--- (as those trivially equivalent by reflexivity).
+-- (as those trivially equivalent by reflexivity). Note that this collapses the
+-- entire tree. The relation with its entire tree collapsed is returned as the
+-- second element in the tuple.
 --
 -- The second element in the tuple is the updated input equivalence relation.
 -- It may safely be discarded w.r.t. correctness. However, it is advised to
@@ -185,14 +190,9 @@ eqClass a r@(EqRel m) =
 -- Internal data is updated (paths are collapsed) which ensures the amortized
 -- time complexity.
 eqClasses :: Ord a => EqRel a -> ([Set a], EqRel a)
-eqClasses r@(EqRel m) =
-  mapFst Map.elems $ foldr step (Map.empty, r) $ Map.keys m
-  where
-  step :: Ord a => a -> (Map a (Set a), EqRel a) -> (Map a (Set a), EqRel a)
-  step a (res, r) =
-    let (aRepr, r2) = representative a r
-    in
-    (Map.alter (Just . Set.insert a . fromMaybe (Set.singleton a)) aRepr res, r2)
+eqClasses r =
+  let (classes, r') = eqClassesWithRepresentative r
+  in (map snd classes, r')
 
 -- | /O(n log n)/. Returns the representative of the element's equivalence
 -- class.
@@ -240,6 +240,22 @@ fromList :: Ord a => [[a]] -> EqRel a
 fromList = foldr equateAll empty
 
 
+-- | /O(n log n)/. Produces a frozen version of the equivalence relation:
+-- `FrozenEqRel`. While that representation cannot be modified, it can be
+-- queried significantly quicker.
+--
+-- Note that this function produces the fully collapsed equivalence relation as
+-- the second element of the returned tuple.
+freeze :: Ord a => EqRel a -> (FrozenEqRel a, EqRel a)
+freeze rel =
+  let (allClasses, rel') = eqClassesWithRepresentative rel
+      elements = foldr insertClass Map.empty allClasses
+  in (FrozenEqRel elements allClasses, rel')
+  where
+  insertClass :: Ord a => (a, Set a) -> Map a (a, Set a) -> Map a (a, Set a)
+  insertClass (r,s) m = foldr (\x -> Map.insert x (r,s)) m s
+
+
 -- # Helpers (Internal) #
 
 -- | Private. /O(log n)/. Returns the representative of the element's
@@ -270,6 +286,23 @@ representativeWithSize a r@(EqRel m) =
         -- happen.
         (Nothing, _)  -> error "Invalid Tree"
 
+-- | Private. /O(n log n)/. Returns all equivalence classes; each with their
+-- representative. Note that this collapses the entire tree. The relation with
+-- its entire tree collapsed is returned as the second element in the tuple.
+eqClassesWithRepresentative :: Ord a => EqRel a -> ([(a,Set a)], EqRel a)
+eqClassesWithRepresentative r@(EqRel m) =
+  mapFst Map.assocs $ foldr step (Map.empty, r) $ Map.keys m
+  where
+  -- Adds a single element to the result. Keeps track of:
+  -- * A map whose keys are representatives, and whose values are the values in
+  --   its equivalence class.
+  -- * The input equivalence class whose internal representation may collapse
+  --   along each step. It's contents do not change, though.
+  step :: Ord a => a -> (Map a (Set a), EqRel a) -> (Map a (Set a), EqRel a)
+  step a (res, r) =
+    let (aRepr, r2) = representative a r
+    in (insertToSet aRepr a res, r2)
+
 -- | Applies the function to the first element of the tuple.
 mapFst :: ( a -> c ) -> ( a, b ) -> ( c, b )
 mapFst f (a, b) = (f a, b)
@@ -280,6 +313,10 @@ safeTail :: [a] -> [a]
 safeTail []     = []
 safeTail (_:xs) = xs
 
+-- | Inserts a single element into a map containing sets of elements.
+insertToSet :: (Ord k, Ord v) => k -> v -> Map k (Set v) -> Map k (Set v)
+insertToSet k v =
+  Map.alter (Just . Set.insert v . fromMaybe Set.empty) k
 
 -- # Class instances
 

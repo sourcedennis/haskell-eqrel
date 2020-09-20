@@ -41,16 +41,19 @@ module Data.HashEqRel
   , combine
     -- * Conversion
   , fromList
+  , freeze
   ) where
 
 -- Stdlib imports
 import           Data.Maybe ( fromMaybe )
--- External library imports
+-- Extra stdlib imports
 import qualified Data.HashMap.Strict as HashMap
 import           Data.HashMap.Strict ( HashMap )
 import qualified Data.HashSet as HashSet
 import           Data.HashSet ( HashSet )
 import           Data.Hashable ( Hashable )
+-- Local imports
+import           Data.Frozen.HashEqRelInternal ( FrozenHashEqRel (..) )
 
 
 -- This module is almost a verbatim copy of `Data.EqRel`. Sadly, very few things
@@ -240,6 +243,21 @@ combine a b =
 fromList :: (Eq a, Hashable a) => [[a]] -> HashEqRel a
 fromList = foldr equateAll empty
 
+-- | /O(n log n)/. Produces a frozen version of the equivalence relation:
+-- `FrozenHashEqRel`. While that representation cannot be modified, it can be
+-- queried significantly quicker.
+--
+-- Note that this function produces the fully collapsed equivalence relation as
+-- the second element of the returned tuple.
+freeze :: (Eq a, Hashable a) => HashEqRel a -> (FrozenHashEqRel a, HashEqRel a)
+freeze rel =
+  let (allClasses, rel') = eqClassesWithRepresentative rel
+      elements = foldr insertClass HashMap.empty allClasses
+  in (FrozenHashEqRel elements allClasses, rel')
+  where
+  insertClass :: (Eq a, Hashable a) => (a, HashSet a) -> HashMap a (a, HashSet a) -> HashMap a (a, HashSet a)
+  insertClass (r,s) m = foldr (\x -> HashMap.insert x (r,s)) m s
+
 
 -- # Helpers (Internal) #
 
@@ -271,6 +289,23 @@ representativeWithSize a r@(HashEqRel m) =
         -- happen.
         (Nothing, _)  -> error "Invalid Tree"
 
+-- | Private. /O(n log n)/. Returns all equivalence classes; each with their
+-- representative. Note that this collapses the entire tree. The relation with
+-- its entire tree collapsed is returned as the second element in the tuple.
+eqClassesWithRepresentative :: (Eq a, Hashable a) => HashEqRel a -> ([(a, HashSet a)], HashEqRel a)
+eqClassesWithRepresentative r@(HashEqRel m) =
+  mapFst HashMap.toList $ foldr step (HashMap.empty, r) $ HashMap.keys m
+  where
+  -- Adds a single element to the result. Keeps track of:
+  -- * A map whose keys are representatives, and whose values are the values in
+  --   its equivalence class.
+  -- * The input equivalence class whose internal representation may collapse
+  --   along each step. It's contents do not change, though.
+  step :: (Eq a, Hashable a) => a -> (HashMap a (HashSet a), HashEqRel a) -> (HashMap a (HashSet a), HashEqRel a)
+  step a (res, r) =
+    let (aRepr, r2) = representative a r
+    in (insertToSet aRepr a res, r2)
+
 -- | Applies the function to the first element of the tuple.
 mapFst :: ( a -> c ) -> ( a, b ) -> ( c, b )
 mapFst f (a, b) = (f a, b)
@@ -280,6 +315,11 @@ mapFst f (a, b) = (f a, b)
 safeTail :: [a] -> [a]
 safeTail []     = []
 safeTail (_:xs) = xs
+
+-- | Inserts a single element into a map containing sets of elements.
+insertToSet :: (Eq k, Eq v, Hashable k, Hashable v) => k -> v -> HashMap k (HashSet v) -> HashMap k (HashSet v)
+insertToSet k v =
+  HashMap.alter (Just . HashSet.insert v . fromMaybe HashSet.empty) k
 
 
 -- # Class instances
