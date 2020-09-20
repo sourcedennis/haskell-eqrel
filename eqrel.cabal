@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6124326575ea720a1cf7f16c25b74179ad784df7ede88b19ff2faba68ece6f81
+-- hash: 7703606ded371bdf791d2f0399a6636cd249aac512bf72c731fdc08a2202625a
 
 name:           eqrel
 version:        0.0.1
@@ -30,7 +30,13 @@ library
       Data.EqRel
       Data.HashEqRel
       Data.IntEqRel
+      Data.Frozen.EqRel
+      Data.Frozen.HashEqRel
+      Data.Frozen.IntEqRel
   other-modules:
+      Data.Frozen.EqRelInternal
+      Data.Frozen.HashEqRelInternal
+      Data.Frozen.IntEqRelInternal
       Paths_eqrel
   hs-source-dirs:
       src

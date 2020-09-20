@@ -25,6 +25,9 @@ library:
   - Data.EqRel
   - Data.HashEqRel
   - Data.IntEqRel
+  - Data.Frozen.EqRel
+  - Data.Frozen.HashEqRel
+  - Data.Frozen.IntEqRel
 
 tests:
   id-containers-test:
