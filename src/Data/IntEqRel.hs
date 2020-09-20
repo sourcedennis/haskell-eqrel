@@ -29,6 +29,7 @@ module Data.IntEqRel
     -- * Update
   , equate
   , equateAll
+  , collapse
     -- * Query
   , areEq
   , eqClass
@@ -107,6 +108,12 @@ equate a b r =
 -- elements already in the relation.
 equateAll :: [Int] -> IntEqRel -> IntEqRel
 equateAll xs r = foldr ($) r $ zipWith equate xs (safeTail xs)
+
+-- | /O(n log n)/. Collapses the internal tree representation, which eliminates
+-- all indirections from the tree. Future queries can discard the updated
+-- relation without loss of performance; provided it is not updated afterwards.
+collapse :: IntEqRel -> IntEqRel
+collapse eqrel = foldr (\a -> snd . representative a) eqrel (IntMap.keys $ treeMap eqrel)
 
 
 -- # Query #
