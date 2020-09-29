@@ -12,7 +12,9 @@ import           Data.Set ( Set )
 -- Local library imports
 import qualified Data.EqRel as EqRel
 import           Data.EqRel
-  ( EqRel, areEq, empty, equate, equateAll, eqClass, eqClasses, combine )
+  ( EqRel, areEq, empty, equate, equateAll, eqClass, eqClasses, combine
+  , fromList
+  )
 
 
 -- TODO: Make tests exhaustive. They are not exhaustive yet by far. Only unit
@@ -75,6 +77,10 @@ unitTests =
       assertEqual [] (toSetSet [["A","B","Z"], ["X","Y"], ["P","Q","R"]]) (Set.fromList $ fst $ eqClasses r)
   , testCase "combine" $
       assertEqual [] (toSetSet [["C","D"], ["X","Y"], ["A","B","P","Q","R","V","Z"]]) (Set.fromList $ fst $ eqClasses $ combine r q)
+  , testCase "fromList 1" $
+      assertBool [] (fst $ areEq "D" "F" $ fromList [["A","B"],["D","E","F"],["G"]])
+  , testCase "fromList 2" $
+      assertBool [] (not $ fst $ areEq "F" "G" $ fromList [["A","B"],["D","E","F"],["G"]])
   ]
 
 -- | Helper. Converts a list of lists to a set of sets.
